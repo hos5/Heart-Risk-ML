@@ -226,6 +226,42 @@ st.markdown(
         margin: 0;
     }
 
+    .predicted-class-card {
+        margin-top: 1rem;
+        padding: 1.15rem;
+        border-radius: 22px;
+        background: rgba(2, 6, 23, 0.58);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        text-align: center;
+        box-shadow: 0 14px 35px rgba(0, 0, 0, 0.20);
+    }
+
+    .predicted-class-label {
+        color: #cbd5e1;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 0.45rem;
+    }
+
+    .predicted-class-value {
+        font-size: 2.6rem;
+        font-weight: 900;
+        line-height: 1.1;
+        margin: 0;
+    }
+
+    .predicted-no-risk {
+        color: #22c55e;
+        text-shadow: 0 0 18px rgba(34, 197, 94, 0.30);
+    }
+
+    .predicted-risk {
+        color: #fb7185;
+        text-shadow: 0 0 18px rgba(251, 113, 133, 0.30);
+    }
+
     .small-note {
         color: #94a3b8;
         font-size: 0.9rem;
@@ -802,6 +838,8 @@ elif page == "Risk Prediction":
             selected_model = models[selected_model_name]
             risk_probability = selected_model.predict_proba(patient_data)[0][1] * 100
             predicted_class = selected_model.predict(patient_data)[0]
+            predicted_class_label = binary_label(predicted_class)
+            predicted_class_css = "predicted-risk" if predicted_class_label == "Risk" else "predicted-no-risk"
             status, style_class, status_text = prediction_status(risk_probability)
 
             st.plotly_chart(make_gauge(risk_probability), use_container_width=True)
@@ -811,7 +849,11 @@ elif page == "Risk Prediction":
                     <div class="result-title">{status}</div>
                     <p class="result-text">{status_text}</p>
                     <p class="result-text"><b>Selected Model:</b> {selected_model_name}</p>
-                    <p class="result-text"><b>Predicted Class:</b> {binary_label(predicted_class)}</p>
+
+                    <div class="predicted-class-card">
+                        <div class="predicted-class-label">Predicted Class</div>
+                        <div class="predicted-class-value {predicted_class_css}">{predicted_class_label}</div>
+                    </div>
                 </div>
                 """,
                 unsafe_allow_html=True,
