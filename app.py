@@ -1,7 +1,10 @@
-import streamlit as st
-import pandas as pd
+import os
+import io
 import numpy as np
+import pandas as pd
+import streamlit as st
 import plotly.express as px
+import plotly.graph_objects as go
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -11,214 +14,16 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 
 
-# =============================
-# Page settings
-# =============================
+# =========================
+# Page Settings
+# =========================
 st.set_page_config(
     page_title="Heart Disease Risk Prediction",
     page_icon="❤️",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# =============================
-# Custom CSS
-# =============================
-st.markdown(
-    """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-
-    * {
-        font-family: 'Inter', sans-serif;
-    }
-
-    .stApp {
-        background:
-            radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 35%),
-            radial-gradient(circle at top right, rgba(34, 197, 94, 0.09), transparent 30%),
-            linear-gradient(135deg, #07111f 0%, #0f172a 55%, #111827 100%);
-        color: #e5e7eb;
-    }
-
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #07111f 0%, #0f172a 100%);
-        border-right: 1px solid rgba(148, 163, 184, 0.18);
-    }
-
-    [data-testid="stSidebar"] * {
-        color: #e5e7eb;
-    }
-
-    .main-title {
-        font-size: 44px;
-        font-weight: 800;
-        color: #f8fafc;
-        margin-bottom: 4px;
-        letter-spacing: -0.03em;
-    }
-
-    .sub-title {
-        font-size: 18px;
-        color: #cbd5e1;
-        margin-bottom: 28px;
-        line-height: 1.7;
-    }
-
-    .section-title {
-        font-size: 26px;
-        font-weight: 800;
-        color: #f8fafc;
-        margin: 18px 0 10px 0;
-    }
-
-    .soft-card {
-        background: rgba(15, 23, 42, 0.76);
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        border-radius: 22px;
-        padding: 22px;
-        box-shadow: 0 18px 40px rgba(0,0,0,0.22);
-        backdrop-filter: blur(10px);
-        margin-bottom: 18px;
-    }
-
-    .metric-card {
-        background: linear-gradient(145deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.92));
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        border-radius: 20px;
-        padding: 20px;
-        min-height: 128px;
-        box-shadow: 0 16px 35px rgba(0,0,0,0.20);
-    }
-
-    .metric-label {
-        color: #94a3b8;
-        font-size: 14px;
-        margin-bottom: 8px;
-    }
-
-    .metric-value {
-        color: #f8fafc;
-        font-size: 34px;
-        font-weight: 800;
-        line-height: 1;
-    }
-
-    .metric-note {
-        color: #cbd5e1;
-        font-size: 13px;
-        margin-top: 8px;
-    }
-
-    .result-high {
-        background: linear-gradient(145deg, rgba(127, 29, 29, 0.72), rgba(15, 23, 42, 0.86));
-        border: 1px solid rgba(248, 113, 113, 0.35);
-        border-radius: 22px;
-        padding: 24px;
-    }
-
-    .result-low {
-        background: linear-gradient(145deg, rgba(20, 83, 45, 0.70), rgba(15, 23, 42, 0.86));
-        border: 1px solid rgba(74, 222, 128, 0.35);
-        border-radius: 22px;
-        padding: 24px;
-    }
-
-    .result-medium {
-        background: linear-gradient(145deg, rgba(120, 53, 15, 0.70), rgba(15, 23, 42, 0.86));
-        border: 1px solid rgba(251, 191, 36, 0.35);
-        border-radius: 22px;
-        padding: 24px;
-    }
-
-    .result-title {
-        font-size: 22px;
-        font-weight: 800;
-        color: #f8fafc;
-        margin-bottom: 6px;
-    }
-
-    .result-percent {
-        font-size: 52px;
-        font-weight: 900;
-        color: #f8fafc;
-        line-height: 1;
-    }
-
-    .small-muted {
-        color: #94a3b8;
-        font-size: 14px;
-        line-height: 1.7;
-    }
-
-    div[data-testid="stMetricValue"] {
-        color: #f8fafc;
-    }
-
-    div[data-testid="stDataFrame"] {
-        border-radius: 16px;
-        overflow: hidden;
-    }
-
-    .stButton > button {
-        background: linear-gradient(90deg, #0ea5e9, #22c55e);
-        color: white;
-        border: none;
-        border-radius: 14px;
-        padding: 0.7rem 1.1rem;
-        font-weight: 800;
-        transition: 0.25s ease;
-        box-shadow: 0 12px 30px rgba(14, 165, 233, 0.24);
-    }
-
-    .stButton > button:hover {
-        transform: translateY(-1px);
-        border: none;
-        color: white;
-        box-shadow: 0 16px 35px rgba(34, 197, 94, 0.25);
-    }
-
-    hr {
-        border: none;
-        border-top: 1px solid rgba(148, 163, 184, 0.18);
-        margin: 20px 0;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-
-# =============================
-# Constants
-# =============================
 DATA_FILE = "heart_disease_risk_dataset_earlymed.csv"
-
-SYMPTOM_COLUMNS = [
-    "Chest_Pain",
-    "Shortness_of_Breath",
-    "Fatigue",
-    "Palpitations",
-    "Dizziness",
-    "Swelling",
-    "Pain_Arms_Jaw_Back",
-    "Cold_Sweats_Nausea",
-]
-
-RISK_SYMPTOM_COLUMNS = [
-    "Chest_Pain",
-    "Shortness_of_Breath",
-    "Pain_Arms_Jaw_Back",
-    "Cold_Sweats_Nausea",
-    "Dizziness",
-]
-
-LIFESTYLE_COLUMNS = [
-    "Smoking",
-    "Obesity",
-    "Sedentary_Lifestyle",
-    "Chronic_Stress",
-]
 
 BASE_FEATURES = [
     "Chest_Pain",
@@ -241,53 +46,219 @@ BASE_FEATURES = [
     "Age",
 ]
 
-FEATURE_LABELS = {
-    "Chest_Pain": "Chest pain / ألم في الصدر",
-    "Shortness_of_Breath": "Shortness of breath / ضيق تنفس",
-    "Fatigue": "Fatigue / تعب",
-    "Palpitations": "Palpitations / خفقان",
-    "Dizziness": "Dizziness / دوخة",
-    "Swelling": "Swelling / تورم",
-    "Pain_Arms_Jaw_Back": "Pain in arms, jaw, or back / ألم في الذراع أو الفك أو الظهر",
-    "Cold_Sweats_Nausea": "Cold sweats or nausea / تعرق بارد أو غثيان",
-    "High_BP": "High blood pressure / ضغط مرتفع",
-    "High_Cholesterol": "High cholesterol / كوليسترول مرتفع",
-    "Diabetes": "Diabetes / سكري",
-    "Smoking": "Smoking / تدخين",
-    "Obesity": "Obesity / سمنة",
-    "Sedentary_Lifestyle": "Sedentary lifestyle / قلة حركة",
-    "Family_History": "Family history / تاريخ عائلي",
-    "Chronic_Stress": "Chronic stress / توتر مزمن",
-}
+TARGET = "Heart_Risk"
+
+SYMPTOM_COLS = [
+    "Chest_Pain",
+    "Shortness_of_Breath",
+    "Fatigue",
+    "Palpitations",
+    "Dizziness",
+    "Swelling",
+    "Pain_Arms_Jaw_Back",
+    "Cold_Sweats_Nausea",
+]
+
+RISK_SYMPTOM_COLS = [
+    "Chest_Pain",
+    "Shortness_of_Breath",
+    "Pain_Arms_Jaw_Back",
+    "Cold_Sweats_Nausea",
+    "Dizziness",
+]
+
+LIFESTYLE_COLS = [
+    "Smoking",
+    "Obesity",
+    "Sedentary_Lifestyle",
+    "Chronic_Stress",
+]
+
+MODEL_FEATURES = BASE_FEATURES + ["symptom", "risk_symptom", "lifestyle"]
 
 
-# =============================
-# Helper functions
-# =============================
-@st.cache_data(show_spinner=False)
-def load_data():
-    df = pd.read_csv(DATA_FILE)
-    df = df.astype(int)
+# =========================
+# Design / CSS
+# =========================
+st.markdown(
+    """
+    <style>
+        .stApp {
+            background: linear-gradient(135deg, #08111f 0%, #0f1f35 45%, #0b2a2d 100%);
+            color: #f8fafc;
+        }
+
+        [data-testid="stSidebar"] {
+            background: #0b1220;
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        h1, h2, h3 {
+            color: #f8fafc !important;
+            letter-spacing: 0.2px;
+        }
+
+        p, label, span, div {
+            color: #e5e7eb;
+        }
+
+        .main-title {
+            padding: 28px 30px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, rgba(20,184,166,0.20), rgba(96,165,250,0.16));
+            border: 1px solid rgba(255,255,255,0.10);
+            margin-bottom: 24px;
+            box-shadow: 0px 20px 60px rgba(0,0,0,0.25);
+        }
+
+        .main-title h1 {
+            font-size: 42px;
+            margin-bottom: 8px;
+        }
+
+        .main-title p {
+            font-size: 18px;
+            color: #cbd5e1;
+            margin: 0;
+        }
+
+        .section-card {
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 22px;
+            padding: 22px;
+            margin: 12px 0px;
+            box-shadow: 0px 14px 45px rgba(0,0,0,0.22);
+        }
+
+        .small-note {
+            color: #94a3b8;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .success-box {
+            padding: 18px 20px;
+            background: rgba(20,184,166,0.14);
+            border: 1px solid rgba(20,184,166,0.35);
+            border-radius: 18px;
+            color: #ccfbf1;
+            font-weight: 600;
+        }
+
+        .warning-box {
+            padding: 18px 20px;
+            background: rgba(244,63,94,0.14);
+            border: 1px solid rgba(244,63,94,0.35);
+            border-radius: 18px;
+            color: #ffe4e6;
+            font-weight: 600;
+        }
+
+        .metric-card {
+            background: rgba(2, 6, 23, 0.45);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 18px;
+            padding: 18px;
+            text-align: center;
+        }
+
+        .metric-card h4 {
+            color: #94a3b8;
+            font-size: 15px;
+            margin-bottom: 8px;
+        }
+
+        .metric-card h2 {
+            color: #ffffff;
+            font-size: 30px;
+            margin: 0;
+        }
+
+        div[data-testid="stMetricValue"] {
+            color: #ffffff;
+        }
+
+        div[data-testid="stTabs"] button p {
+            font-size: 16px;
+            font-weight: 700;
+            color: #e5e7eb;
+        }
+
+        .stButton > button {
+            width: 100%;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #14b8a6, #3b82f6);
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            font-weight: 700;
+        }
+
+        .stButton > button:hover {
+            color: white;
+            border: none;
+            filter: brightness(1.08);
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# =========================
+# Helper Functions
+# =========================
+def add_engineered_features(data: pd.DataFrame) -> pd.DataFrame:
+    """Add the same engineered features used in the notebook."""
+    data = data.copy()
+    data["symptom"] = data[SYMPTOM_COLS].sum(axis=1)
+    data["risk_symptom"] = data[RISK_SYMPTOM_COLS].sum(axis=1)
+    data["lifestyle"] = data[LIFESTYLE_COLS].sum(axis=1)
+    return data
+
+
+def clean_dataset(raw_df: pd.DataFrame) -> pd.DataFrame:
+    """Clean and prepare the dataset."""
+    df = raw_df.copy()
+    df.columns = df.columns.str.strip()
+
+    required = BASE_FEATURES + [TARGET]
+    missing_cols = [col for col in required if col not in df.columns]
+    if missing_cols:
+        raise ValueError(f"Missing required columns: {missing_cols}")
+
+    for col in required:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df = df.dropna(subset=required).copy()
+
+    for col in required:
+        df[col] = df[col].astype(int)
+
     df = df.drop_duplicates()
-
-    df["symptom"] = df[SYMPTOM_COLUMNS].sum(axis=1)
-    df["risk_symptom"] = df[RISK_SYMPTOM_COLUMNS].sum(axis=1)
-    df["lifestyle"] = df[LIFESTYLE_COLUMNS].sum(axis=1)
+    df = add_engineered_features(df)
 
     return df
 
 
 @st.cache_resource(show_spinner=False)
-def train_models(df):
-    X = df.drop("Heart_Risk", axis=1)
-    y = df["Heart_Risk"]
+def train_models_from_csv(csv_bytes: bytes):
+    """Load data, train both models, and return all needed artifacts."""
+    raw_df = pd.read_csv(io.BytesIO(csv_bytes))
+    df = clean_dataset(raw_df)
+
+    X = df[MODEL_FEATURES]
+    y = df[TARGET]
+
+    stratify_value = y if y.nunique() == 2 else None
 
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
-        test_size=0.2,
+        test_size=0.20,
         random_state=42,
-        stratify=y
+        stratify=stratify_value
     )
 
     scaler = StandardScaler()
@@ -307,554 +278,661 @@ def train_models(df):
             min_samples_leaf=10,
             max_features="sqrt",
             random_state=42,
-            n_jobs=1
+            n_jobs=-1
         )
     }
 
-    metrics = []
+    metrics_rows = []
     confusion_matrices = {}
+    predictions = {}
 
     for model_name, model in models.items():
         model.fit(X_train_pca, y_train)
         y_pred = model.predict(X_test_pca)
+        predictions[model_name] = y_pred
 
-        metrics.append({
+        metrics_rows.append({
             "Model": model_name,
             "Accuracy": accuracy_score(y_test, y_pred),
-            "Precision": precision_score(y_test, y_pred),
-            "Recall": recall_score(y_test, y_pred),
-            "F1 Score": f1_score(y_test, y_pred),
+            "Precision": precision_score(y_test, y_pred, zero_division=0),
+            "Recall": recall_score(y_test, y_pred, zero_division=0),
+            "F1 Score": f1_score(y_test, y_pred, zero_division=0),
         })
 
         confusion_matrices[model_name] = confusion_matrix(y_test, y_pred)
 
-    metrics_df = pd.DataFrame(metrics)
+    metrics_df = pd.DataFrame(metrics_rows)
 
     return {
+        "df": df,
         "models": models,
-        "metrics": metrics_df,
+        "metrics_df": metrics_df,
         "confusion_matrices": confusion_matrices,
         "scaler": scaler,
         "pca": pca,
-        "feature_columns": X.columns.tolist(),
+        "model_features": MODEL_FEATURES,
+        "x_test_pca": X_test_pca,
+        "y_test": y_test,
         "pca_components": X_train_pca.shape[1],
         "explained_variance": float(pca.explained_variance_ratio_.sum()),
     }
 
 
-def yes_no_input(label, key):
-    return 1 if st.selectbox(label, ["No", "Yes"], key=key) == "Yes" else 0
+def load_csv_bytes():
+    uploaded_file = st.sidebar.file_uploader(
+        "Upload CSV file",
+        type=["csv"],
+        help="Upload heart_disease_risk_dataset_earlymed.csv"
+    )
+
+    if uploaded_file is not None:
+        return uploaded_file.getvalue(), uploaded_file.name
+
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "rb") as file:
+            return file.read(), DATA_FILE
+
+    return None, None
 
 
-def metric_card(label, value, note=""):
+def yes_no_checkbox(label: str) -> int:
+    return int(st.checkbox(label))
+
+
+def make_metric_card(title: str, value: str):
     st.markdown(
         f"""
         <div class="metric-card">
-            <div class="metric-label">{label}</div>
-            <div class="metric-value">{value}</div>
-            <div class="metric-note">{note}</div>
+            <h4>{title}</h4>
+            <h2>{value}</h2>
         </div>
         """,
         unsafe_allow_html=True
     )
 
 
-def make_metric_chart(metrics_df):
-    long_df = metrics_df.melt(
-        id_vars="Model",
-        value_vars=["Accuracy", "Precision", "Recall", "F1 Score"],
-        var_name="Metric",
-        value_name="Score"
-    )
-
-    fig = px.bar(
-        long_df,
-        x="Metric",
-        y="Score",
-        color="Model",
-        barmode="group",
-        text=long_df["Score"].map(lambda x: f"{x:.3f}"),
-        title="Model Performance Comparison",
-        color_discrete_map={
-            "Logistic Regression": "#38bdf8",
-            "Random Forest": "#22c55e",
-        }
-    )
-
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(15,23,42,0.35)",
-        font=dict(color="#e5e7eb"),
-        title_font=dict(size=22, color="#f8fafc"),
-        yaxis=dict(range=[0, 1.02], gridcolor="rgba(148,163,184,0.18)"),
-        xaxis=dict(gridcolor="rgba(148,163,184,0.18)"),
-        legend=dict(bgcolor="rgba(0,0,0,0)"),
-        margin=dict(l=20, r=20, t=70, b=20),
-        height=460,
-    )
-    fig.update_traces(textposition="outside", marker_line_width=0)
-    return fig
+def risk_label(value: int) -> str:
+    return "Risk" if value == 1 else "No Risk"
 
 
-def make_confusion_matrix_chart(cm, model_name):
-    labels = ["No Risk", "Risk"]
-
-    fig = px.imshow(
-        cm,
-        text_auto=True,
-        labels=dict(x="Predicted", y="Actual", color="Count"),
-        x=labels,
-        y=labels,
-        color_continuous_scale=["#0f172a", "#38bdf8"],
-        title=f"Confusion Matrix - {model_name}",
+def plot_confusion_matrix(cm, title):
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=cm,
+            x=["Predicted No Risk", "Predicted Risk"],
+            y=["Actual No Risk", "Actual Risk"],
+            text=cm,
+            texttemplate="%{text}",
+            colorscale=[
+                [0, "#0f172a"],
+                [0.5, "#2563eb"],
+                [1, "#14b8a6"]
+            ],
+            showscale=False
+        )
     )
 
     fig.update_layout(
+        title=title,
+        template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(15,23,42,0.35)",
-        font=dict(color="#e5e7eb"),
-        title_font=dict(size=20, color="#f8fafc"),
-        margin=dict(l=20, r=20, t=70, b=20),
-        height=430,
-    )
-    return fig
-
-
-def make_distribution_chart(df):
-    risk_counts = df["Heart_Risk"].value_counts().reset_index()
-    risk_counts.columns = ["Heart_Risk", "Count"]
-    risk_counts["Status"] = risk_counts["Heart_Risk"].map({0: "No Risk", 1: "Risk"})
-
-    fig = px.bar(
-        risk_counts,
-        x="Status",
-        y="Count",
-        text="Count",
-        color="Status",
-        title="Heart Risk Distribution",
-        color_discrete_map={
-            "No Risk": "#38bdf8",
-            "Risk": "#f97316",
-        }
-    )
-
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(15,23,42,0.35)",
-        font=dict(color="#e5e7eb"),
-        title_font=dict(size=22, color="#f8fafc"),
-        showlegend=False,
-        yaxis=dict(gridcolor="rgba(148,163,184,0.18)"),
-        margin=dict(l=20, r=20, t=70, b=20),
+        plot_bgcolor="rgba(0,0,0,0)",
         height=420,
+        margin=dict(l=20, r=20, t=60, b=20),
+        font=dict(color="#f8fafc")
     )
-    fig.update_traces(textposition="outside", marker_line_width=0)
+
     return fig
 
 
-def make_age_chart(df):
-    chart_df = df.copy()
-    chart_df["Heart Risk"] = chart_df["Heart_Risk"].map({0: "No Risk", 1: "Risk"})
+def build_patient_input(age_min: int, age_max: int) -> pd.DataFrame:
+    st.markdown("#### Patient Information")
 
-    fig = px.histogram(
-        chart_df,
-        x="Age",
-        color="Heart Risk",
-        nbins=32,
-        barmode="overlay",
-        opacity=0.72,
-        title="Age Distribution by Heart Risk",
-        color_discrete_map={
-            "No Risk": "#38bdf8",
-            "Risk": "#f97316",
-        }
-    )
+    col_age, col_gender, col_model_note = st.columns([1, 1, 1.3])
 
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(15,23,42,0.35)",
-        font=dict(color="#e5e7eb"),
-        title_font=dict(size=22, color="#f8fafc"),
-        legend_title_text="Heart Risk",
-        yaxis=dict(gridcolor="rgba(148,163,184,0.18)"),
-        xaxis=dict(gridcolor="rgba(148,163,184,0.18)"),
-        margin=dict(l=20, r=20, t=70, b=20),
-        height=430,
-    )
-    return fig
+    with col_age:
+        age = st.slider("Age", min_value=18, max_value=100, value=int((age_min + age_max) / 2))
 
+    with col_gender:
+        gender_text = st.selectbox("Gender", ["Female", "Male"])
+        gender = 0 if gender_text == "Female" else 1
 
-def make_correlation_chart(df):
-    corr_cols = ["Age", "symptom", "risk_symptom", "lifestyle", "Heart_Risk"]
-    corr = df[corr_cols].corr()
-
-    fig = px.imshow(
-        corr,
-        text_auto=".2f",
-        color_continuous_scale=["#0f172a", "#38bdf8", "#22c55e"],
-        title="Correlation Heatmap",
-    )
-
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(15,23,42,0.35)",
-        font=dict(color="#e5e7eb"),
-        title_font=dict(size=22, color="#f8fafc"),
-        margin=dict(l=20, r=20, t=70, b=20),
-        height=470,
-    )
-    return fig
-
-
-def prediction_status(probability):
-    if probability >= 65:
-        return "High Risk", "result-high", "The selected model predicts a high heart disease risk."
-    if probability >= 35:
-        return "Medium Risk", "result-medium", "The selected model predicts a medium heart disease risk."
-    return "Low Risk", "result-low", "The selected model predicts a low heart disease risk."
-
-
-# =============================
-# Load and train
-# =============================
-try:
-    df = load_data()
-except FileNotFoundError:
-    st.markdown('<div class="main-title">Heart Disease Risk Prediction</div>', unsafe_allow_html=True)
-    st.error(
-        "ملف البيانات غير موجود. ضع ملف البيانات في نفس مجلد التطبيق بنفس هذا الاسم:"
-    )
-    st.code(DATA_FILE)
-    st.info(
-        "لا يوجد خيار رفع ملف داخل التطبيق حسب طلبك. فقط حط ملف CSV بجانب app.py ثم شغل التطبيق."
-    )
-    st.stop()
-except Exception as error:
-    st.error("صار خطأ أثناء قراءة البيانات.")
-    st.exception(error)
-    st.stop()
-
-trained = train_models(df)
-models = trained["models"]
-metrics_df = trained["metrics"]
-feature_columns = trained["feature_columns"]
-
-
-# =============================
-# Sidebar
-# =============================
-with st.sidebar:
-    st.markdown("## ❤️ Heart Risk App")
-    st.markdown(
-        "<span class='small-muted'>Professional Streamlit dashboard for heart disease risk prediction.</span>",
-        unsafe_allow_html=True
-    )
-    st.markdown("---")
-
-    selected_page = st.radio(
-        "القوائم",
-        [
-            "Overview",
-            "Risk Prediction",
-            "Model Comparison",
-            "Data Insights",
-            "About Project",
-        ],
-        index=0
-    )
+    with col_model_note:
+        st.markdown(
+            """
+            <div class="small-note">
+            Gender is used only in the prediction form. It does not filter or change any EDA charts.
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     st.markdown("---")
-    selected_model_name = st.selectbox(
-        "اختر المودل للتنبؤ",
-        list(models.keys()),
-        index=0
-    )
+    st.markdown("#### Symptoms")
 
-    st.caption("اختيار الجنس موجود في صفحة التنبؤ فقط، ولا يتم استخدامه في الرسومات.")
+    s1, s2, s3, s4 = st.columns(4)
+    with s1:
+        chest_pain = yes_no_checkbox("Chest pain")
+        shortness = yes_no_checkbox("Shortness of breath")
+    with s2:
+        fatigue = yes_no_checkbox("Fatigue")
+        palpitations = yes_no_checkbox("Palpitations")
+    with s3:
+        dizziness = yes_no_checkbox("Dizziness")
+        swelling = yes_no_checkbox("Swelling")
+    with s4:
+        arms_pain = yes_no_checkbox("Pain in arms / jaw / back")
+        cold_sweats = yes_no_checkbox("Cold sweats / nausea")
+
+    st.markdown("#### Medical and Lifestyle Factors")
+
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        high_bp = yes_no_checkbox("High blood pressure")
+        high_cholesterol = yes_no_checkbox("High cholesterol")
+    with m2:
+        diabetes = yes_no_checkbox("Diabetes")
+        family_history = yes_no_checkbox("Family history")
+    with m3:
+        smoking = yes_no_checkbox("Smoking")
+        obesity = yes_no_checkbox("Obesity")
+    with m4:
+        sedentary = yes_no_checkbox("Sedentary lifestyle")
+        chronic_stress = yes_no_checkbox("Chronic stress")
+
+    patient_data = pd.DataFrame([{
+        "Chest_Pain": chest_pain,
+        "Shortness_of_Breath": shortness,
+        "Fatigue": fatigue,
+        "Palpitations": palpitations,
+        "Dizziness": dizziness,
+        "Swelling": swelling,
+        "Pain_Arms_Jaw_Back": arms_pain,
+        "Cold_Sweats_Nausea": cold_sweats,
+        "High_BP": high_bp,
+        "High_Cholesterol": high_cholesterol,
+        "Diabetes": diabetes,
+        "Smoking": smoking,
+        "Obesity": obesity,
+        "Sedentary_Lifestyle": sedentary,
+        "Family_History": family_history,
+        "Chronic_Stress": chronic_stress,
+        "Gender": gender,
+        "Age": age,
+    }])
+
+    patient_data = add_engineered_features(patient_data)
+    return patient_data
 
 
-# =============================
+# =========================
 # Header
-# =============================
-st.markdown('<div class="main-title">Heart Disease Risk Prediction</div>', unsafe_allow_html=True)
+# =========================
 st.markdown(
     """
-    <div class="sub-title">
-    Dashboard احترافي للتنبؤ بخطر الإصابة بأمراض القلب باستخدام Logistic Regression و Random Forest.
-    التطبيق مقسم، واضح، بدون خيار رفع ملف، وجاهز للرفع على GitHub.
+    <div class="main-title">
+        <h1>Heart Disease Risk Prediction Dashboard</h1>
+        <p>
+        A professional Streamlit app for EDA, model comparison, and patient risk prediction
+        using Logistic Regression and Random Forest.
+        </p>
     </div>
     """,
     unsafe_allow_html=True
 )
 
 
-# =============================
-# Pages
-# =============================
-if selected_page == "Overview":
-    st.markdown('<div class="section-title">Overview</div>', unsafe_allow_html=True)
+# =========================
+# Sidebar
+# =========================
+st.sidebar.title("Project Controls")
+st.sidebar.markdown(
+    """
+    Upload your dataset or keep the CSV file in the same folder as `app.py`.
 
-    c1, c2, c3, c4 = st.columns(4)
+    Expected file name:
+    `heart_disease_risk_dataset_earlymed.csv`
+    """
+)
+
+csv_bytes, csv_name = load_csv_bytes()
+
+if csv_bytes is None:
+    st.error(
+        "Dataset not found. Please upload the CSV file from the sidebar or place "
+        "`heart_disease_risk_dataset_earlymed.csv` in the same folder as `app.py`."
+    )
+
+    st.info(
+        "Required columns: "
+        + ", ".join(BASE_FEATURES + [TARGET])
+    )
+    st.stop()
+
+try:
+    with st.spinner("Training models and preparing dashboard..."):
+        artifacts = train_models_from_csv(csv_bytes)
+except Exception as error:
+    st.error("There is a problem while loading or training the dataset.")
+    st.exception(error)
+    st.stop()
+
+df = artifacts["df"]
+models = artifacts["models"]
+metrics_df = artifacts["metrics_df"]
+
+
+# =========================
+# KPIs
+# =========================
+risk_count = int(df[TARGET].sum())
+no_risk_count = int((df[TARGET] == 0).sum())
+risk_rate = df[TARGET].mean() * 100
+
+kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+with kpi1:
+    make_metric_card("Total Records", f"{len(df):,}")
+with kpi2:
+    make_metric_card("Heart Risk Cases", f"{risk_count:,}")
+with kpi3:
+    make_metric_card("No Risk Cases", f"{no_risk_count:,}")
+with kpi4:
+    make_metric_card("Risk Rate", f"{risk_rate:.1f}%")
+
+
+# =========================
+# Tabs
+# =========================
+overview_tab, eda_tab, model_tab, prediction_tab, conclusion_tab = st.tabs(
+    [
+        "Overview",
+        "Visual Analysis",
+        "Model Comparison",
+        "Risk Prediction",
+        "Conclusion",
+    ]
+)
+
+
+# =========================
+# Overview Tab
+# =========================
+with overview_tab:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.subheader("Dataset Overview")
+
+    c1, c2 = st.columns([1.2, 1])
+
     with c1:
-        metric_card("Total Rows", f"{len(df):,}", "After removing duplicates")
+        st.write("Dataset file:", csv_name)
+        st.dataframe(df.head(10), use_container_width=True)
+
     with c2:
-        metric_card("Features", f"{len(feature_columns)}", "Including engineered features")
+        st.markdown("#### Project Features")
+        st.markdown(
+            """
+            - Data cleaning and duplicate removal.
+            - Feature engineering for symptoms, risky symptoms, and lifestyle.
+            - PCA with 95% explained variance.
+            - Logistic Regression and Random Forest models.
+            - Interactive patient risk prediction.
+            """
+        )
+
+        st.markdown("#### PCA Summary")
+        st.write(f"Number of PCA components used: **{artifacts['pca_components']}**")
+        st.write(f"Explained variance: **{artifacts['explained_variance']:.2%}**")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# =========================
+# EDA Tab
+# =========================
+with eda_tab:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.subheader("Visual Analysis")
+
+    df_plot = df.copy()
+    df_plot["Risk_Label"] = df_plot[TARGET].map({0: "No Risk", 1: "Risk"})
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        risk_counts = (
+            df_plot["Risk_Label"]
+            .value_counts()
+            .reindex(["No Risk", "Risk"])
+            .reset_index()
+        )
+        risk_counts.columns = ["Risk_Label", "Count"]
+
+        fig_risk = px.bar(
+            risk_counts,
+            x="Risk_Label",
+            y="Count",
+            text="Count",
+            color="Risk_Label",
+            color_discrete_map={
+                "No Risk": "#14b8a6",
+                "Risk": "#f43f5e"
+            },
+            title="Heart Risk Distribution"
+        )
+        fig_risk.update_traces(textposition="outside")
+        fig_risk.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            showlegend=False,
+            height=430,
+            font=dict(color="#f8fafc")
+        )
+        st.plotly_chart(fig_risk, use_container_width=True)
+
+    with c2:
+        fig_age = px.histogram(
+            df_plot,
+            x="Age",
+            color="Risk_Label",
+            nbins=30,
+            barmode="overlay",
+            opacity=0.72,
+            color_discrete_map={
+                "No Risk": "#14b8a6",
+                "Risk": "#f43f5e"
+            },
+            title="Age Distribution by Heart Risk"
+        )
+        fig_age.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            height=430,
+            font=dict(color="#f8fafc")
+        )
+        st.plotly_chart(fig_age, use_container_width=True)
+
+    c3, c4 = st.columns(2)
+
     with c3:
-        metric_card("PCA Components", f"{trained['pca_components']}", f"{trained['explained_variance']:.1%} variance kept")
+        age_bins = [18, 30, 40, 50, 60, 70, 80, 100]
+        age_labels = ["18-30", "31-40", "41-50", "51-60", "61-70", "71-80", "81+"]
+        df_plot["Age_Group"] = pd.cut(df_plot["Age"], bins=age_bins, labels=age_labels, include_lowest=True)
+
+        age_risk = (
+            df_plot
+            .groupby("Age_Group", observed=False)[TARGET]
+            .mean()
+            .reset_index()
+        )
+        age_risk["Risk_Percentage"] = age_risk[TARGET] * 100
+
+        fig_age_risk = px.line(
+            age_risk,
+            x="Age_Group",
+            y="Risk_Percentage",
+            markers=True,
+            title="Heart Risk Percentage by Age Group"
+        )
+        fig_age_risk.update_traces(line=dict(width=4), marker=dict(size=10))
+        fig_age_risk.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            yaxis_title="Risk Percentage (%)",
+            xaxis_title="Age Group",
+            height=430,
+            font=dict(color="#f8fafc")
+        )
+        st.plotly_chart(fig_age_risk, use_container_width=True)
+
     with c4:
-        best_row = metrics_df.sort_values("Accuracy", ascending=False).iloc[0]
-        metric_card("Best Model", best_row["Model"], f"Accuracy: {best_row['Accuracy']:.2%}")
+        corr_cols = ["Age", "symptom", "risk_symptom", "lifestyle", TARGET]
+        corr = df_plot[corr_cols].corr()
 
-    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-    st.plotly_chart(make_distribution_chart(df), use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+        fig_corr = go.Figure(
+            data=go.Heatmap(
+                z=corr.values,
+                x=corr.columns,
+                y=corr.columns,
+                colorscale=[
+                    [0, "#0f172a"],
+                    [0.5, "#2563eb"],
+                    [1, "#14b8a6"]
+                ],
+                zmin=-1,
+                zmax=1,
+                text=np.round(corr.values, 2),
+                texttemplate="%{text}",
+                colorbar=dict(title="Correlation")
+            )
+        )
+        fig_corr.update_layout(
+            title="Correlation Heatmap",
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            height=430,
+            font=dict(color="#f8fafc")
+        )
+        st.plotly_chart(fig_corr, use_container_width=True)
 
-    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-    st.markdown("### Dataset Preview")
-    st.dataframe(df.head(10), use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
-elif selected_page == "Risk Prediction":
-    st.markdown('<div class="section-title">Risk Prediction</div>', unsafe_allow_html=True)
+# =========================
+# Model Comparison Tab
+# =========================
+with model_tab:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.subheader("Model Performance Comparison")
 
-    left, right = st.columns([1.15, 0.85], gap="large")
+    st.dataframe(
+        metrics_df.style.format({
+            "Accuracy": "{:.3%}",
+            "Precision": "{:.3%}",
+            "Recall": "{:.3%}",
+            "F1 Score": "{:.3%}",
+        }),
+        use_container_width=True
+    )
 
-    with left:
-        st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-        st.markdown("### Answer the questions")
+    metrics_long = metrics_df.melt(
+        id_vars="Model",
+        value_vars=["Accuracy", "Precision", "Recall", "F1 Score"],
+        var_name="Metric",
+        value_name="Score"
+    )
+    metrics_long["Score_Percentage"] = metrics_long["Score"] * 100
 
-        with st.form("prediction_form"):
-            st.markdown("#### Personal Information")
-            age = st.slider("Age / العمر", min_value=18, max_value=100, value=50, step=1)
-            gender_text = st.selectbox("Gender / الجنس", ["Female", "Male"])
-            gender = 1 if gender_text == "Male" else 0
+    fig_metrics = px.bar(
+        metrics_long,
+        x="Metric",
+        y="Score_Percentage",
+        color="Model",
+        barmode="group",
+        text=metrics_long["Score_Percentage"].map(lambda x: f"{x:.2f}%"),
+        color_discrete_map={
+            "Logistic Regression": "#14b8a6",
+            "Random Forest": "#60a5fa"
+        },
+        title="Logistic Regression vs Random Forest"
+    )
 
-            st.markdown("#### Symptoms")
-            col1, col2 = st.columns(2)
-            with col1:
-                chest_pain = yes_no_input(FEATURE_LABELS["Chest_Pain"], "chest_pain")
-                fatigue = yes_no_input(FEATURE_LABELS["Fatigue"], "fatigue")
-                dizziness = yes_no_input(FEATURE_LABELS["Dizziness"], "dizziness")
-                pain_arms_jaw_back = yes_no_input(FEATURE_LABELS["Pain_Arms_Jaw_Back"], "pain_arms")
-            with col2:
-                shortness_of_breath = yes_no_input(FEATURE_LABELS["Shortness_of_Breath"], "breath")
-                palpitations = yes_no_input(FEATURE_LABELS["Palpitations"], "palpitations")
-                swelling = yes_no_input(FEATURE_LABELS["Swelling"], "swelling")
-                cold_sweats_nausea = yes_no_input(FEATURE_LABELS["Cold_Sweats_Nausea"], "cold_sweats")
+    fig_metrics.update_traces(textposition="outside")
+    fig_metrics.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        yaxis_title="Score (%)",
+        xaxis_title="Metric",
+        height=500,
+        font=dict(color="#f8fafc"),
+        legend_title_text="Model"
+    )
+    st.plotly_chart(fig_metrics, use_container_width=True)
 
-            st.markdown("#### Health and Lifestyle Factors")
-            col3, col4 = st.columns(2)
-            with col3:
-                high_bp = yes_no_input(FEATURE_LABELS["High_BP"], "high_bp")
-                diabetes = yes_no_input(FEATURE_LABELS["Diabetes"], "diabetes")
-                obesity = yes_no_input(FEATURE_LABELS["Obesity"], "obesity")
-                family_history = yes_no_input(FEATURE_LABELS["Family_History"], "family_history")
-            with col4:
-                high_cholesterol = yes_no_input(FEATURE_LABELS["High_Cholesterol"], "cholesterol")
-                smoking = yes_no_input(FEATURE_LABELS["Smoking"], "smoking")
-                sedentary_lifestyle = yes_no_input(FEATURE_LABELS["Sedentary_Lifestyle"], "sedentary")
-                chronic_stress = yes_no_input(FEATURE_LABELS["Chronic_Stress"], "stress")
+    cm1, cm2 = st.columns(2)
+    with cm1:
+        st.plotly_chart(
+            plot_confusion_matrix(
+                artifacts["confusion_matrices"]["Logistic Regression"],
+                "Confusion Matrix - Logistic Regression"
+            ),
+            use_container_width=True
+        )
 
-            submitted = st.form_submit_button("Predict Risk")
+    with cm2:
+        st.plotly_chart(
+            plot_confusion_matrix(
+                artifacts["confusion_matrices"]["Random Forest"],
+                "Confusion Matrix - Random Forest"
+            ),
+            use_container_width=True
+        )
 
-        st.markdown('</div>', unsafe_allow_html=True)
+    best_model = metrics_df.sort_values("Recall", ascending=False).iloc[0]
+    st.markdown(
+        f"""
+        <div class="success-box">
+        Best model by Recall: {best_model['Model']} with {best_model['Recall']:.2%}.
+        Recall is important here because missing a real heart-risk case can be dangerous.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-    input_data = {
-        "Chest_Pain": chest_pain,
-        "Shortness_of_Breath": shortness_of_breath,
-        "Fatigue": fatigue,
-        "Palpitations": palpitations,
-        "Dizziness": dizziness,
-        "Swelling": swelling,
-        "Pain_Arms_Jaw_Back": pain_arms_jaw_back,
-        "Cold_Sweats_Nausea": cold_sweats_nausea,
-        "High_BP": high_bp,
-        "High_Cholesterol": high_cholesterol,
-        "Diabetes": diabetes,
-        "Smoking": smoking,
-        "Obesity": obesity,
-        "Sedentary_Lifestyle": sedentary_lifestyle,
-        "Family_History": family_history,
-        "Chronic_Stress": chronic_stress,
-        "Gender": gender,
-        "Age": age,
-    }
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    input_data["symptom"] = sum(input_data[col] for col in SYMPTOM_COLUMNS)
-    input_data["risk_symptom"] = sum(input_data[col] for col in RISK_SYMPTOM_COLUMNS)
-    input_data["lifestyle"] = sum(input_data[col] for col in LIFESTYLE_COLUMNS)
 
-    input_df = pd.DataFrame([input_data])[feature_columns]
+# =========================
+# Prediction Tab
+# =========================
+with prediction_tab:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.subheader("Interactive Heart Risk Prediction")
 
-    with right:
-        st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-        st.markdown("### Prediction Result")
+    selected_model_name = st.selectbox(
+        "Choose the model you want to use",
+        list(models.keys())
+    )
 
-        if submitted:
-            scaled_input = trained["scaler"].transform(input_df)
-            pca_input = trained["pca"].transform(scaled_input)
+    patient_data = build_patient_input(
+        age_min=int(df["Age"].min()),
+        age_max=int(df["Age"].max())
+    )
 
-            selected_model = models[selected_model_name]
-            probability = selected_model.predict_proba(pca_input)[0][1] * 100
-            status, css_class, message = prediction_status(probability)
+    predict_button = st.button("Predict Heart Risk")
+
+    if predict_button:
+        selected_model = models[selected_model_name]
+
+        input_x = patient_data[artifacts["model_features"]]
+        input_scaled = artifacts["scaler"].transform(input_x)
+        input_pca = artifacts["pca"].transform(input_scaled)
+
+        risk_probability = selected_model.predict_proba(input_pca)[0][1]
+        prediction = selected_model.predict(input_pca)[0]
+
+        result_col, gauge_col = st.columns([1, 1])
+
+        with result_col:
+            st.metric(
+                label="Heart Risk Probability",
+                value=f"{risk_probability * 100:.2f}%"
+            )
+
+            st.metric(
+                label="Selected Model",
+                value=selected_model_name
+            )
+
+            if prediction == 1:
+                st.markdown(
+                    """
+                    <div class="warning-box">
+                    Result: High Heart Risk. This result means the model found risk patterns in the answers.
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    """
+                    <div class="success-box">
+                    Result: Low Heart Risk. This result means the model did not find strong risk patterns in the answers.
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
             st.markdown(
-                f"""
-                <div class="{css_class}">
-                    <div class="result-title">{status}</div>
-                    <div class="result-percent">{probability:.1f}%</div>
-                    <div class="small-muted">{message}</div>
+                """
+                <div class="small-note">
+                This app is for educational machine learning use only. It is not a medical diagnosis.
+                Always consult a medical professional for real health decisions.
                 </div>
                 """,
                 unsafe_allow_html=True
             )
 
-            st.progress(float(probability / 100))
+        with gauge_col:
+            gauge_color = "#f43f5e" if risk_probability >= 0.5 else "#14b8a6"
 
-            st.markdown("#### Model used")
-            st.info(selected_model_name)
-
-            all_model_probs = []
-            for model_name, model in models.items():
-                all_model_probs.append({
-                    "Model": model_name,
-                    "Risk Probability": model.predict_proba(pca_input)[0][1] * 100
-                })
-
-            prob_df = pd.DataFrame(all_model_probs)
-            fig = px.bar(
-                prob_df,
-                x="Risk Probability",
-                y="Model",
-                orientation="h",
-                text=prob_df["Risk Probability"].map(lambda x: f"{x:.1f}%"),
-                title="Prediction Probability by Model",
-                color="Model",
-                color_discrete_map={
-                    "Logistic Regression": "#38bdf8",
-                    "Random Forest": "#22c55e",
-                }
+            fig_gauge = go.Figure(
+                go.Indicator(
+                    mode="gauge+number",
+                    value=risk_probability * 100,
+                    number={"suffix": "%", "font": {"size": 46}},
+                    title={"text": "Risk Score"},
+                    gauge={
+                        "axis": {"range": [0, 100]},
+                        "bar": {"color": gauge_color},
+                        "steps": [
+                            {"range": [0, 50], "color": "rgba(20,184,166,0.25)"},
+                            {"range": [50, 100], "color": "rgba(244,63,94,0.25)"}
+                        ],
+                        "threshold": {
+                            "line": {"color": "#ffffff", "width": 4},
+                            "thickness": 0.75,
+                            "value": 50
+                        }
+                    }
+                )
             )
-            fig.update_layout(
+            fig_gauge.update_layout(
+                template="plotly_dark",
                 paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(15,23,42,0.35)",
-                font=dict(color="#e5e7eb"),
-                title_font=dict(size=18, color="#f8fafc"),
-                xaxis=dict(range=[0, 100], gridcolor="rgba(148,163,184,0.18)"),
-                yaxis=dict(gridcolor="rgba(148,163,184,0.18)"),
-                showlegend=False,
-                margin=dict(l=20, r=20, t=60, b=20),
-                height=300,
+                plot_bgcolor="rgba(0,0,0,0)",
+                height=420,
+                font=dict(color="#f8fafc")
             )
-            fig.update_traces(textposition="outside")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig_gauge, use_container_width=True)
 
-            st.caption("This app is for educational purposes and is not a medical diagnosis.")
-        else:
-            st.info("اختر الإجابات من النموذج ثم اضغط Predict Risk عشان تظهر نسبة الإصابة.")
-
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
-elif selected_page == "Model Comparison":
-    st.markdown('<div class="section-title">Model Comparison</div>', unsafe_allow_html=True)
+# =========================
+# Conclusion Tab
+# =========================
+with conclusion_tab:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.subheader("Project Conclusion")
 
-    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-    st.plotly_chart(make_metric_chart(metrics_df), use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-    st.markdown("### Metrics Table")
-    display_metrics = metrics_df.copy()
-    for col in ["Accuracy", "Precision", "Recall", "F1 Score"]:
-        display_metrics[col] = display_metrics[col].map(lambda x: f"{x:.2%}")
-    st.dataframe(display_metrics, use_container_width=True, hide_index=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-        st.plotly_chart(
-            make_confusion_matrix_chart(
-                trained["confusion_matrices"]["Logistic Regression"],
-                "Logistic Regression"
-            ),
-            use_container_width=True
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col_b:
-        st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-        st.plotly_chart(
-            make_confusion_matrix_chart(
-                trained["confusion_matrices"]["Random Forest"],
-                "Random Forest"
-            ),
-            use_container_width=True
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-
-
-elif selected_page == "Data Insights":
-    st.markdown('<div class="section-title">Data Insights</div>', unsafe_allow_html=True)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-        st.plotly_chart(make_age_chart(df), use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col2:
-        st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-        st.plotly_chart(make_correlation_chart(df), use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-    st.markdown("### Project Insights")
     st.markdown(
         """
-        - The number of symptoms has a clear relationship with heart risk.
-        - Age is an important factor because higher-risk cases appear more often in older ages.
-        - Lifestyle features such as smoking, obesity, sedentary lifestyle, and chronic stress help explain risk.
-        - Logistic Regression and Random Forest both performed very well, with Logistic Regression slightly higher in this dataset.
-        - The train/test results are close, which means there is no clear overfitting.
+        This project predicts heart disease risk using binary medical and lifestyle features.
+        The dataset was cleaned by removing duplicates, and three new features were added:
+        total symptoms, risky symptoms, and lifestyle risk score.
+
+        Logistic Regression and Random Forest were trained after scaling and PCA.
+        The comparison chart shows that both models perform very well, with very close scores.
+        The prediction section allows the user to choose the model, answer patient questions,
+        and get the estimated heart-risk percentage.
+
+        Gender is included only as a prediction input and does not affect the dashboard charts.
         """
     )
-    st.markdown('</div>', unsafe_allow_html=True)
 
-
-elif selected_page == "About Project":
-    st.markdown('<div class="section-title">About Project</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-    st.markdown(
-        """
-        ### Project Summary
-
-        This Streamlit app is based on a machine learning project for early heart disease risk prediction.
-
-        **Main steps used in the project:**
-        1. Load and clean the dataset.
-        2. Remove duplicate rows.
-        3. Add engineered features:
-           - `symptom`
-           - `risk_symptom`
-           - `lifestyle`
-        4. Scale the features using `StandardScaler`.
-        5. Apply PCA and keep 95% of the variance.
-        6. Train two models:
-           - Logistic Regression
-           - Random Forest
-        7. Compare both models using Accuracy, Precision, Recall, and F1 Score.
-
-        ### Important Note
-        This app is only for educational use. It should not be used as a real medical diagnosis.
-        """
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-    st.markdown("### GitHub Run Command")
-    st.code("streamlit run app.py", language="bash")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
