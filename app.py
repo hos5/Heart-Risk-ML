@@ -717,7 +717,7 @@ with st.sidebar:
     )
     st.markdown("---")
     page = st.radio(
-        "Dashboard",
+        "القوائم",
         [
             "Overview",
             "Risk Prediction",
