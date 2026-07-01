@@ -227,39 +227,39 @@ st.markdown(
     }
 
     .predicted-class-card {
-        margin-top: 1rem;
-        padding: 1.15rem;
-        border-radius: 22px;
-        background: rgba(2, 6, 23, 0.58);
+        margin-top: 1.1rem;
+        padding: 1.35rem 1rem;
+        border-radius: 24px;
+        background: rgba(2, 6, 23, 0.62);
         border: 1px solid rgba(255, 255, 255, 0.16);
         text-align: center;
-        box-shadow: 0 14px 35px rgba(0, 0, 0, 0.20);
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
     }
 
     .predicted-class-label {
         color: #cbd5e1;
         font-size: 1rem;
-        font-weight: 700;
-        letter-spacing: 0.04em;
+        font-weight: 800;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
-        margin-bottom: 0.45rem;
+        margin-bottom: 0.5rem;
     }
 
     .predicted-class-value {
-        font-size: 2.6rem;
+        font-size: 3.2rem;
         font-weight: 900;
-        line-height: 1.1;
+        line-height: 1.05;
         margin: 0;
     }
 
     .predicted-no-risk {
         color: #22c55e;
-        text-shadow: 0 0 18px rgba(34, 197, 94, 0.30);
+        text-shadow: 0 0 18px rgba(34, 197, 94, 0.38);
     }
 
     .predicted-risk {
         color: #fb7185;
-        text-shadow: 0 0 18px rgba(251, 113, 133, 0.30);
+        text-shadow: 0 0 18px rgba(251, 113, 133, 0.38);
     }
 
     .small-note {
@@ -838,8 +838,10 @@ elif page == "Risk Prediction":
             selected_model = models[selected_model_name]
             risk_probability = selected_model.predict_proba(patient_data)[0][1] * 100
             predicted_class = selected_model.predict(patient_data)[0]
+
             predicted_class_label = binary_label(predicted_class)
             predicted_class_css = "predicted-risk" if predicted_class_label == "Risk" else "predicted-no-risk"
+
             status, style_class, status_text = prediction_status(risk_probability)
 
             st.plotly_chart(make_gauge(risk_probability), use_container_width=True)
