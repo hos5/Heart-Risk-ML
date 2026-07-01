@@ -226,42 +226,6 @@ st.markdown(
         margin: 0;
     }
 
-    .predicted-class-card {
-        margin-top: 1.1rem;
-        padding: 1.35rem 1rem;
-        border-radius: 24px;
-        background: rgba(2, 6, 23, 0.62);
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        text-align: center;
-        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
-    }
-
-    .predicted-class-label {
-        color: #cbd5e1;
-        font-size: 1rem;
-        font-weight: 800;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        margin-bottom: 0.5rem;
-    }
-
-    .predicted-class-value {
-        font-size: 3.2rem;
-        font-weight: 900;
-        line-height: 1.05;
-        margin: 0;
-    }
-
-    .predicted-no-risk {
-        color: #22c55e;
-        text-shadow: 0 0 18px rgba(34, 197, 94, 0.38);
-    }
-
-    .predicted-risk {
-        color: #fb7185;
-        text-shadow: 0 0 18px rgba(251, 113, 133, 0.38);
-    }
-
     .small-note {
         color: #94a3b8;
         font-size: 0.9rem;
@@ -840,25 +804,34 @@ elif page == "Risk Prediction":
             predicted_class = selected_model.predict(patient_data)[0]
 
             predicted_class_label = binary_label(predicted_class)
-            predicted_class_css = "predicted-risk" if predicted_class_label == "Risk" else "predicted-no-risk"
+            predicted_class_display = "RISK" if predicted_class_label == "Risk" else "NO RISK"
 
             status, style_class, status_text = prediction_status(risk_probability)
 
             st.plotly_chart(make_gauge(risk_probability), use_container_width=True)
+
             st.markdown(
                 f"""
                 <div class="{style_class}">
                     <div class="result-title">{status}</div>
                     <p class="result-text">{status_text}</p>
                     <p class="result-text"><b>Selected Model:</b> {selected_model_name}</p>
-
-                    <div class="predicted-class-card">
-                        <div class="predicted-class-label">Predicted Class</div>
-                        <div class="predicted-class-value {predicted_class_css}">{predicted_class_label}</div>
-                    </div>
                 </div>
                 """,
                 unsafe_allow_html=True,
+            )
+
+            st.markdown("## Predicted Class")
+
+            if predicted_class_label == "Risk":
+                st.error("⚠️ RISK")
+            else:
+                st.success("✅ NO RISK")
+
+            st.metric(
+                label="Final Prediction",
+                value=predicted_class_display,
+                help="This class comes directly from the selected machine learning model."
             )
         else:
             st.plotly_chart(make_gauge(0), use_container_width=True)
